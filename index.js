@@ -1,4 +1,8 @@
 
+    
+        // User authentication system
+        let currentUser = null;
+        
         // Product database - Start with empty array
         let products = [];
         
@@ -13,10 +17,19 @@
         let pendingAction = null;
         
         // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const app = document.getElementById('app');
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userNameEl = document.getElementById('user-name');
+        
         const productsGrid = document.getElementById('products-grid');
         const salesHistory = document.getElementById('sales-history');
         const todaySalesCount = document.getElementById('today-sales-count');
         const todayRevenue = document.getElementById('today-revenue');
+        const todayProfit = document.getElementById('today-profit');
         const addProductBtn = document.getElementById('add-product-btn');
         const addProductModal = document.getElementById('add-product-modal');
         const addProductForm = document.getElementById('add-product-form');
@@ -42,13 +55,167 @@
         const cancelConfirmBtn = document.getElementById('cancel-confirm-btn');
         const confirmActionBtn = document.getElementById('confirm-action-btn');
         
-        // Format currency to Indian Rupees
+        // Discount elements
+        const discountAmount = document.getElementById('discount-amount');
+        const discountType = document.getElementById('discount-type');
+        const priceBreakdown = document.getElementById('price-breakdown');
+        
+        // Format currency to Pakistani Rupees
         function formatCurrency(amount) {
-            return `<span class="currency">₹</span>${amount.toFixed(2)}`;
+            return `<span class="currency">Rs</span>${amount.toFixed(2)}`;
         }
         
         // Initialize the POS system
         function init() {
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('posCurrentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showApp();
+            } else {
+                showAuth();
+            }
+            
+            // Set up authentication event listeners
+            setupAuthListeners();
+        }
+        
+        // Set up authentication event listeners
+        function setupAuthListeners() {
+            // Auth tabs
+            authTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    authTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    loginForm.classList.remove('active');
+                    signupForm.classList.remove('active');
+                    
+                    if (tabName === 'login') {
+                        loginForm.classList.add('active');
+                    } else {
+                        signupForm.classList.add('active');
+                    }
+                });
+            });
+            
+            // Login form
+            loginForm.addEventListener('submit', handleLogin);
+            
+            // Signup form
+            signupForm.addEventListener('submit', handleSignup);
+            
+            // Logout button
+            logoutBtn.addEventListener('click', handleLogout);
+        }
+        
+        // Handle user login
+        function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            // Simple validation
+            if (!email || !password) {
+                showNotification('Please enter both email and password', 'error');
+                return;
+            }
+            
+            // Get users from localStorage
+            const users = JSON.parse(localStorage.getItem('posUsers') || '[]');
+            
+            // Check if user exists
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('posCurrentUser', JSON.stringify(currentUser));
+                showApp();
+                showNotification(`Welcome back, ${user.name}!`);
+            } else {
+                showNotification('Invalid email or password', 'error');
+            }
+        }
+        
+        // Handle user signup
+        function handleSignup(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirm = document.getElementById('signup-confirm').value;
+            
+            // Validation
+            if (!name || !email || !password || !confirm) {
+                showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            if (password !== confirm) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showNotification('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            // Get users from localStorage
+            const users = JSON.parse(localStorage.getItem('posUsers') || '[]');
+            
+            // Check if user already exists
+            if (users.find(u => u.email === email)) {
+                showNotification('User with this email already exists', 'error');
+                return;
+            }
+            
+            // Create new user
+            const newUser = {
+                id: Date.now(),
+                name,
+                email,
+                password,
+                createdAt: new Date().toISOString()
+            };
+            
+            users.push(newUser);
+            localStorage.setItem('posUsers', JSON.stringify(users));
+            
+            // Log in the new user
+            currentUser = newUser;
+            localStorage.setItem('posCurrentUser', JSON.stringify(currentUser));
+            
+            showApp();
+            showNotification(`Account created successfully! Welcome, ${name}!`);
+        }
+        
+        // Handle user logout
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('posCurrentUser');
+            showAuth();
+            showNotification('You have been logged out', 'error');
+        }
+        
+        // Show authentication screen
+        function showAuth() {
+            authContainer.style.display = 'flex';
+            app.style.display = 'none';
+        }
+        
+        // Show main application
+        function showApp() {
+            authContainer.style.display = 'none';
+            app.style.display = 'flex';
+            
+            // Set current user name
+            userNameEl.textContent = currentUser.name;
+            
             // Set current date
             const now = new Date();
             currentDateEl.textContent = now.toLocaleDateString('en-US', { 
@@ -76,11 +243,11 @@
             updateSalesDisplay();
             
             // Set up event listeners
-            setupEventListeners();
+            setupAppEventListeners();
         }
         
-        // Set up event listeners
-        function setupEventListeners() {
+        // Set up application event listeners
+        function setupAppEventListeners() {
             // Category tabs
             categoryTabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -141,6 +308,66 @@
             });
             
             confirmActionBtn.addEventListener('click', executePendingAction);
+            
+            // Discount calculation
+            discountAmount.addEventListener('input', calculatePriceBreakdown);
+            discountType.addEventListener('change', calculatePriceBreakdown);
+            document.getElementById('sell-quantity').addEventListener('input', calculatePriceBreakdown);
+        }
+        
+        // Calculate price breakdown with discount
+        function calculatePriceBreakdown() {
+            if (!currentProductForSale) return;
+            
+            const quantity = parseInt(document.getElementById('sell-quantity').value) || 1;
+            const discount = parseFloat(discountAmount.value) || 0;
+            const discountTypeValue = discountType.value;
+            
+            const product = products.find(p => p.id === currentProductForSale.id);
+            if (!product) return;
+            
+            const costPrice = product.costPrice || 0;
+            const sellingPrice = product.price;
+            
+            // Calculate subtotal
+            const subtotal = sellingPrice * quantity;
+            
+            // Calculate discount amount
+            let discountAmountValue = 0;
+            if (discountTypeValue === 'percentage') {
+                discountAmountValue = (subtotal * discount) / 100;
+            } else {
+                discountAmountValue = discount;
+            }
+            
+            // Ensure discount doesn't exceed subtotal
+            discountAmountValue = Math.min(discountAmountValue, subtotal);
+            
+            // Calculate final total
+            const total = subtotal - discountAmountValue;
+            
+            // Calculate profit
+            const profit = (sellingPrice - costPrice) * quantity - discountAmountValue;
+            
+            // Update price breakdown display
+            priceBreakdown.innerHTML = `
+                <div class="price-row">
+                    <span>Subtotal:</span>
+                    <span>${formatCurrency(subtotal)}</span>
+                </div>
+                <div class="price-row">
+                    <span>Discount:</span>
+                    <span>-${formatCurrency(discountAmountValue)}</span>
+                </div>
+                <div class="price-row total">
+                    <span>Total:</span>
+                    <span>${formatCurrency(total)}</span>
+                </div>
+                <div class="price-row">
+                    <span>Estimated Profit:</span>
+                    <span style="color: var(--success);">${formatCurrency(profit)}</span>
+                </div>
+            `;
         }
         
         // Show confirmation dialog
@@ -326,6 +553,13 @@
             document.getElementById('sell-quantity').value = 1;
             document.getElementById('sell-quantity').max = totalUnits;
             
+            // Reset discount
+            discountAmount.value = 0;
+            discountType.value = 'fixed';
+            
+            // Calculate initial price breakdown
+            calculatePriceBreakdown();
+            
             sellProductModal.classList.add('active');
         }
         
@@ -334,6 +568,9 @@
             if (!currentProductForSale) return;
             
             const quantity = parseInt(document.getElementById('sell-quantity').value);
+            const discount = parseFloat(discountAmount.value) || 0;
+            const discountTypeValue = discountType.value;
+            
             const product = products.find(p => p.id === currentProductForSale.id);
             
             if (!product || quantity <= 0) {
@@ -348,6 +585,28 @@
                 return;
             }
             
+            // Calculate sale details
+            const costPrice = product.costPrice || 0;
+            const sellingPrice = product.price;
+            const subtotal = sellingPrice * quantity;
+            
+            // Calculate discount amount
+            let discountAmountValue = 0;
+            if (discountTypeValue === 'percentage') {
+                discountAmountValue = (subtotal * discount) / 100;
+            } else {
+                discountAmountValue = discount;
+            }
+            
+            // Ensure discount doesn't exceed subtotal
+            discountAmountValue = Math.min(discountAmountValue, subtotal);
+            
+            // Calculate final total
+            const total = subtotal - discountAmountValue;
+            
+            // Calculate profit
+            const profit = (sellingPrice - costPrice) * quantity - discountAmountValue;
+            
             // Update stock
             product.totalUnits = totalUnits - quantity;
             
@@ -358,10 +617,15 @@
                 product: {
                     id: product.id,
                     name: product.name,
-                    price: product.price
+                    price: product.price,
+                    costPrice: costPrice
                 },
                 quantity: quantity,
-                total: product.price * quantity
+                subtotal: subtotal,
+                discount: discountAmountValue,
+                discountType: discountTypeValue,
+                total: total,
+                profit: profit
             };
             
             // Add to sales history
@@ -372,7 +636,11 @@
             saveProducts();
             
             // Show success message
-            showNotification(`Sold ${quantity} units of ${product.name} for ${formatCurrency(sale.total)}`);
+            let message = `Sold ${quantity} units of ${product.name} for ${formatCurrency(total)}`;
+            if (discountAmountValue > 0) {
+                message += ` (${formatCurrency(discountAmountValue)} discount applied)`;
+            }
+            showNotification(message);
             
             // Close modal
             sellProductModal.classList.remove('active');
@@ -479,10 +747,12 @@
             // Calculate today's totals
             const salesCount = todaySales.length;
             const revenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+            const profit = todaySales.reduce((sum, sale) => sum + sale.profit, 0);
             
             // Update summary cards
             todaySalesCount.textContent = salesCount;
             todayRevenue.innerHTML = formatCurrency(revenue);
+            todayProfit.innerHTML = formatCurrency(profit);
             
             // Update sales history
             salesHistory.innerHTML = '';
@@ -501,13 +771,22 @@
             todaySales.forEach(sale => {
                 const saleItem = document.createElement('div');
                 saleItem.className = 'sale-item';
+                
+                let discountText = '';
+                if (sale.discount > 0) {
+                    discountText = `<span class="discount-badge">-${formatCurrency(sale.discount)}</span>`;
+                }
+                
                 saleItem.innerHTML = `
                     <div class="sale-header">
                         <div class="sale-time">${sale.timestamp}</div>
-                        <div class="sale-total">${formatCurrency(sale.total)}</div>
+                        <div class="sale-total">${formatCurrency(sale.total)}${discountText}</div>
                     </div>
                     <div class="sale-products">
                         Sold ${sale.quantity} units of ${sale.product.name}
+                    </div>
+                    <div class="sale-profit">
+                        Profit: ${formatCurrency(sale.profit)}
                     </div>
                     <div class="sale-actions">
                         <button class="detail-btn" data-id="${sale.id}">
@@ -527,12 +806,30 @@
                             <span>${formatCurrency(sale.product.price)}</span>
                         </div>
                         <div class="detail-item">
+                            <span>Cost per unit:</span>
+                            <span>${formatCurrency(sale.product.costPrice || 0)}</span>
+                        </div>
+                        <div class="detail-item">
                             <span>Quantity:</span>
                             <span>${sale.quantity}</span>
                         </div>
                         <div class="detail-item">
+                            <span>Subtotal:</span>
+                            <span>${formatCurrency(sale.subtotal)}</span>
+                        </div>
+                        ${sale.discount > 0 ? `
+                        <div class="detail-item">
+                            <span>Discount:</span>
+                            <span>-${formatCurrency(sale.discount)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="detail-item">
                             <span>Total:</span>
                             <span>${formatCurrency(sale.total)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span>Profit:</span>
+                            <span style="color: var(--success);">${formatCurrency(sale.profit)}</span>
                         </div>
                     </div>
                 `;
@@ -617,22 +914,39 @@
                 allSalesList.appendChild(dateHeader);
                 
                 const dateRevenue = dateSales.reduce((sum, sale) => sum + sale.total, 0);
+                const dateProfit = dateSales.reduce((sum, sale) => sum + sale.profit, 0);
+                
                 const revenueEl = document.createElement('p');
-                revenueEl.style.marginBottom = '10px';
+                revenueEl.style.marginBottom = '5px';
                 revenueEl.style.fontWeight = '600';
                 revenueEl.innerHTML = `Total Revenue: ${formatCurrency(dateRevenue)}`;
                 allSalesList.appendChild(revenueEl);
                 
+                const profitEl = document.createElement('p');
+                profitEl.style.marginBottom = '10px';
+                profitEl.style.fontWeight = '600';
+                profitEl.style.color = 'var(--success)';
+                profitEl.innerHTML = `Total Profit: ${formatCurrency(dateProfit)}`;
+                allSalesList.appendChild(profitEl);
+                
                 dateSales.forEach(sale => {
+                    let discountText = '';
+                    if (sale.discount > 0) {
+                        discountText = `<span class="discount-badge">-${formatCurrency(sale.discount)}</span>`;
+                    }
+                    
                     const saleItem = document.createElement('div');
                     saleItem.className = 'sale-item';
                     saleItem.innerHTML = `
                         <div class="sale-header">
                             <div class="sale-time">${sale.timestamp.split(', ')[1]}</div>
-                            <div class="sale-total">${formatCurrency(sale.total)}</div>
+                            <div class="sale-total">${formatCurrency(sale.total)}${discountText}</div>
                         </div>
                         <div class="sale-products">
                             Sold ${sale.quantity} units of ${sale.product.name}
+                        </div>
+                        <div class="sale-profit">
+                            Profit: ${formatCurrency(sale.profit)}
                         </div>
                         <div class="sale-actions">
                             <button class="delete-sale-btn" data-id="${sale.id}">
@@ -662,7 +976,7 @@
             if (products.length === 0) {
                 inventoryTableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 30px;">No products in inventory</td>
+                        <td colspan="8" style="text-align: center; padding: 30px;">No products in inventory</td>
                     </tr>
                 `;
                 return;
@@ -686,6 +1000,8 @@
                 row.innerHTML = `
                     <td>${product.name}</td>
                     <td>${product.category}</td>
+                    <td>${formatCurrency(product.costPrice || 0)}</td>
+                    <td>${formatCurrency(product.price)}</td>
                     <td>${unitsPerBox}</td>
                     <td>${boxes} boxes + ${remainingUnits} units</td>
                     <td class="stock-cell ${stockStatus}">
@@ -729,13 +1045,14 @@
             
             const name = document.getElementById('product-name').value;
             const category = document.getElementById('product-category').value;
+            const costPrice = parseFloat(document.getElementById('cost-price').value);
             const price = parseFloat(document.getElementById('product-price').value);
             const barcode = document.getElementById('product-barcode').value;
             const unitsPerBox = parseInt(document.getElementById('units-per-box').value);
             const totalUnits = parseInt(document.getElementById('total-units').value);
             const description = document.getElementById('product-description').value;
             
-            if (!name || !category || !price || !unitsPerBox || totalUnits < 0) {
+            if (!name || !category || !costPrice || !price || !unitsPerBox || totalUnits < 0) {
                 showNotification('Please fill all required fields', 'error');
                 return;
             }
@@ -744,6 +1061,7 @@
                 id: Date.now(),
                 name,
                 category,
+                costPrice,
                 price,
                 barcode,
                 unitsPerBox,
@@ -771,10 +1089,12 @@
             let outOfStockCount = 0;
             let totalProducts = products.length;
             let totalValue = 0;
+            let totalCostValue = 0;
             
             products.forEach(product => {
                 const totalUnits = product.totalUnits || 0;
                 totalValue += product.price * totalUnits;
+                totalCostValue += (product.costPrice || 0) * totalUnits;
                 
                 const unitsPerBox = product.unitsPerBox || 1;
                 if (totalUnits === 0) {
@@ -783,6 +1103,8 @@
                     lowStockCount++;
                 }
             });
+            
+            const potentialProfit = totalValue - totalCostValue;
             
             inventoryReport.innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -793,6 +1115,10 @@
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
                         <h3 style="color: var(--primary); margin-bottom: 8px;">${formatCurrency(totalValue)}</h3>
                         <p>Total Inventory Value</p>
+                    </div>
+                    <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h3 style="color: var(--success); margin-bottom: 8px;">${formatCurrency(potentialProfit)}</h3>
+                        <p>Potential Profit</p>
                     </div>
                     <div style="background: #fff3cd; padding: 15px; border-radius: 8px; text-align: center;">
                         <h3 style="color: var(--warning); margin-bottom: 8px;">${lowStockCount}</h3>
@@ -810,7 +1136,7 @@
                         const totalUnits = p.totalUnits || 0;
                         const unitsPerBox = p.unitsPerBox || 1;
                         return totalUnits > 0 && totalUnits < unitsPerBox;
-                    }).map(p => `<li>${p.name} (${totalUnits} units remaining)</li>`).join('') || '<li>No low stock items</li>'}
+                    }).map(p => `<li>${p.name} (${p.totalUnits} units remaining)</li>`).join('') || '<li>No low stock items</li>'}
                 </ul>
                 
                 <h3 style="margin-bottom: 12px;">Out of Stock Items</h3>
