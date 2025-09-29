@@ -24,11 +24,122 @@
         color: #333;
         min-height: 100vh;
         padding: 10px;
+        display: flex;
+        flex-direction: column;
     }
     
     .container {
         max-width: 1400px;
         margin: 0 auto;
+        flex: 1;
+        width: 100%;
+    }
+    
+    /* Login/Signup Styles */
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .auth-box {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        text-align: center;
+    }
+    
+    .auth-box h2 {
+        color: var(--primary);
+        margin-bottom: 20px;
+        font-size: 1.8rem;
+    }
+    
+    .auth-tabs {
+        display: flex;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f5f5f5;
+    }
+    
+    .auth-tab {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+    
+    .auth-tab.active {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .auth-form {
+        display: none;
+    }
+    
+    .auth-form.active {
+        display: block;
+    }
+    
+    .auth-form .form-group {
+        margin-bottom: 15px;
+        text-align: left;
+    }
+    
+    .auth-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: var(--dark);
+    }
+    
+    .auth-form input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+    
+    .auth-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+    }
+    
+    .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(106, 17, 203, 0.3);
+    }
+    
+    .auth-footer {
+        margin-top: 20px;
+        font-size: 0.9rem;
+        color: var(--gray);
+    }
+    
+    /* Main App Styles */
+    .app {
+        display: none;
+        flex-direction: column;
+        min-height: 100vh;
     }
     
     header {
@@ -65,11 +176,38 @@
         opacity: 0.9;
     }
     
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .user-info span {
+        font-weight: 600;
+    }
+    
+    .logout-btn {
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.3s ease;
+    }
+    
+    .logout-btn:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    
     .main-content {
         display: grid;
         grid-template-columns: 1fr 350px;
         gap: 15px;
         margin-top: 15px;
+        flex: 1;
     }
     
     .products-section {
@@ -301,7 +439,7 @@
     
     .sales-summary {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 10px;
         margin-bottom: 15px;
     }
@@ -323,6 +461,14 @@
         color: var(--dark);
         font-weight: 600;
         font-size: 0.9rem;
+    }
+    
+    .summary-card.profit {
+        background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    }
+    
+    .summary-card.profit h3 {
+        color: var(--success);
     }
     
     .sales-history {
@@ -363,6 +509,13 @@
     .sale-products {
         font-size: 0.8rem;
         color: var(--gray);
+        margin-bottom: 8px;
+    }
+    
+    .sale-profit {
+        font-size: 0.8rem;
+        color: var(--success);
+        font-weight: bold;
         margin-bottom: 8px;
     }
     
@@ -680,6 +833,103 @@
         color: var(--light);
     }
     
+    /* Footer Styles */
+    footer {
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        color: white;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+    
+    .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .footer-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        text-align: left;
+    }
+    
+    .footer-info a {
+        color: white;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .footer-info a:hover {
+        text-decoration: underline;
+    }
+    
+    .copyright {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    /* Discount styling */
+    .discount-badge {
+        background: var(--warning);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-left: 5px;
+    }
+    
+    .discount-section {
+        background: #fff8e1;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        border-left: 4px solid var(--warning);
+    }
+    
+    .discount-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .discount-input {
+        flex: 1;
+    }
+    
+    .discount-type {
+        width: 100px;
+    }
+    
+    .price-breakdown {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        margin-top: 10px;
+    }
+    
+    .price-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    
+    .price-row.total {
+        font-weight: bold;
+        border-top: 1px solid #ddd;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+    
     /* Mobile Responsive Styles */
     @media (max-width: 1100px) {
         .main-content {
@@ -763,6 +1013,24 @@
         .history-actions {
             flex-direction: column;
         }
+        
+        .footer-content {
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
+        }
+        
+        .footer-info {
+            text-align: center;
+        }
+        
+        .discount-row {
+            flex-direction: column;
+        }
+        
+        .discount-type {
+            width: 100%;
+        }
     }
     
     @media (max-width: 480px) {
@@ -805,6 +1073,10 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 5px;
+        }
+        
+        .auth-box {
+            padding: 20px;
         }
     }
     
