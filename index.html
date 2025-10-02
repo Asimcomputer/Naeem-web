@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory POS System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <link rel="stylesheet" href="style.css">
    
 </head>
@@ -61,7 +62,7 @@
             <header>
                 <div class="logo">
                     <i class="fas fa-warehouse"></i>
-                    <span>Naeem Cosmetics</span>
+                    <span>Inventory POS System</span>
                 </div>
                 <div class="store-info">
                     <p>Beauty & Home Essentials Store</p>
@@ -75,6 +76,8 @@
                 </div>
             </header>
             
+            <!-- Barcode Scanner Section -->
+          
             <div class="main-content">
                 <div class="products-section">
                     <h2 class="section-title">
@@ -83,6 +86,15 @@
                             <i class="fas fa-plus"></i> Add Product
                         </button>
                     </h2>
+                    
+                    <!-- Search Bar -->
+                    <div class="search-container">
+                        <input type="text" class="search-bar" id="product-search" placeholder="Search products by name or barcode...">
+                        <i class="fas fa-search search-icon"></i>
+                        <div class="search-results" id="search-results">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
                     
                     <div class="category-tabs">
                         <div class="category-tab active" data-category="all">All Products</div>
@@ -171,8 +183,8 @@
                         </a>
                     </div>
                     <div class="copyright">
-                        <p>Design and Developed by Muhammad Asim Khan</p>
-                        <p>© 2025 Inventory POS System. All Rights Reserved.</p>
+                        <p>Design and Development by Asim Khan</p>
+                        <p>© 2023 Inventory POS System. All Rights Reserved.</p>
                     </div>
                 </div>
             </footer>
@@ -217,7 +229,12 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="product-barcode">Barcode</label>
-                            <input type="text" id="product-barcode">
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="product-barcode" style="flex: 1;">
+                                <button type="button" class="btn btn-outline" id="generate-barcode-btn">
+                                    <i class="fas fa-barcode"></i> Generate
+                                </button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="units-per-box">Units per Box *</label>
@@ -286,6 +303,29 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline close-modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="confirm-sell-btn">Sell Product</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Sell Modal -->
+    <div class="modal" id="quick-sell-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Quick Sell</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="quick-sell-info" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <!-- Product info will be inserted here -->
+                </div>
+                <div class="form-group">
+                    <label for="quick-sell-quantity">Quantity to Sell</label>
+                    <input type="number" id="quick-sell-quantity" min="1" value="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline close-modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-quick-sell-btn">Sell Now</button>
                 </div>
             </div>
         </div>
@@ -376,8 +416,7 @@
     <div class="notification" id="notification">
         Product added successfully!
     </div>
-    <script src="index.js"></script>
-
+   <script src="index.js"></script>
+ 
 </body>
 </html>
-
