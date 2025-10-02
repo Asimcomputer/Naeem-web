@@ -11,15 +11,9 @@
     // Track product to sell or edit stock
     let currentProductForSale = null;
     let currentProductForStockEdit = null;
-    let currentScannedProduct = null;
     
     // Track confirmation action
     let pendingAction = null;
-    
-    // Barcode scanner variables
-    let scannerActive = false;
-    let currentStream = null;
-    let facingMode = 'environment'; // Prefer rear camera
     
     // DOM Elements
     const authContainer = document.getElementById('auth-container');
@@ -40,8 +34,6 @@
     const addProductForm = document.getElementById('add-product-form');
     const sellProductModal = document.getElementById('sell-product-modal');
     const confirmSellBtn = document.getElementById('confirm-sell-btn');
-    const quickSellModal = document.getElementById('quick-sell-modal');
-    const confirmQuickSellBtn = document.getElementById('confirm-quick-sell-btn');
     const editStockModal = document.getElementById('edit-stock-modal');
     const updateStockBtn = document.getElementById('update-stock-btn');
     const closeModalBtns = document.querySelectorAll('.close-modal');
@@ -67,29 +59,18 @@
     const discountType = document.getElementById('discount-type');
     const priceBreakdown = document.getElementById('price-breakdown');
     
-    // Barcode scanner elements
-    const startScannerBtn = document.getElementById('start-scanner-btn');
-    const stopScannerBtn = document.getElementById('stop-scanner-btn');
-    const switchCameraBtn = document.getElementById('switch-camera-btn');
-    const scannerResult = document.getElementById('scanner-result');
-    const scannedProductInfo = document.getElementById('scanned-product-info');
-    const barcodeScanner = document.getElementById('barcode-scanner');
-    const generateBarcodeBtn = document.getElementById('generate-barcode-btn');
-    
     // Search elements
     const productSearch = document.getElementById('product-search');
     const searchResults = document.getElementById('search-results');
     
+    // Stats elements
+    const totalProductsEl = document.getElementById('total-products');
+    const inStockCountEl = document.getElementById('in-stock-count');
+    const lowStockCountEl = document.getElementById('low-stock-count');
+    
     // Format currency to Pakistani Rupees
     function formatCurrency(amount) {
         return `<span class="currency">Rs</span>${amount.toFixed(2)}`;
-    }
-    
-    // Generate random barcode
-    function generateBarcode() {
-        const prefix = 'PK';
-        const randomNum = Math.floor(1000000000 + Math.random() * 9000000000);
-        return prefix + randomNum;
     }
     
     // Initialize the POS system
@@ -268,6 +249,7 @@
         renderProducts(products);
         updateInventoryDisplay();
         updateSalesDisplay();
+        updateStats();
         
         // Set up event listeners
         setupAppEventListeners();
@@ -292,7 +274,6 @@
             btn.addEventListener('click', () => {
                 addProductModal.classList.remove('active');
                 sellProductModal.classList.remove('active');
-                quickSellModal.classList.remove('active');
                 editStockModal.classList.remove('active');
                 inventoryReportModal.classList.remove('active');
                 allSalesModal.classList.remove('active');
@@ -305,7 +286,6 @@
         
         // Sell product
         confirmSellBtn.addEventListener('click', sellProduct);
-        confirmQuickSellBtn.addEventListener('click', quickSellProduct);
         
         // Update stock
         updateStockBtn.addEventListener('click', updateStock);
@@ -343,14 +323,6 @@
         discountType.addEventListener('change', calculatePriceBreakdown);
         document.getElementById('sell-quantity').addEventListener('input', calculatePriceBreakdown);
         
-        // Barcode scanner
-        startScannerBtn.addEventListener('click', startBarcodeScanner);
-        stopScannerBtn.addEventListener('click', stopBarcodeScanner);
-        switchCameraBtn.addEventListener('click', switchCamera);
-        generateBarcodeBtn.addEventListener('click', () => {
-            document.getElementById('product-barcode').value = generateBarcode();
-        });
-        
         // Search functionality
         productSearch.addEventListener('input', handleSearch);
         document.addEventListener('click', (e) => {
@@ -369,10 +341,11 @@
             return;
         }
         
-        // Filter products by name or barcode
+        // Filter products by name, category, or description
         const filteredProducts = products.filter(product => 
             product.name.toLowerCase().includes(query) || 
-            (product.barcode && product.barcode.toLowerCase().includes(query))
+            product.category.toLowerCase().includes(query) ||
+            (product.description && product.description.toLowerCase().includes(query))
         );
         
         // Display search results
@@ -389,11 +362,24 @@
             results.forEach(product => {
                 const resultItem = document.createElement('div');
                 resultItem.className = 'search-result-item';
+                
+                const totalUnits = product.totalUnits || 0;
+                let stockStatus = 'In Stock';
+                let stockClass = 'stock-ok';
+                
+                if (totalUnits === 0) {
+                    stockStatus = 'Out of Stock';
+                    stockClass = 'stock-out';
+                } else if (totalUnits < (product.unitsPerBox || 1)) {
+                    stockStatus = 'Low Stock';
+                    stockClass = 'stock-low';
+                }
+                
                 resultItem.innerHTML = `
                     <div class="search-result-info">
                         <div class="search-result-name">${product.name}</div>
                         <div class="search-result-details">
-                            ${product.category} | ${formatCurrency(product.price)} | Stock: ${product.totalUnits}
+                            ${product.category} | ${formatCurrency(product.price)} | <span class="${stockClass}">${stockStatus}</span>
                         </div>
                     </div>
                     <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;" data-id="${product.id}">
@@ -428,296 +414,6 @@
         }
         
         searchResults.classList.add('active');
-    }
-    
-    // Barcode Scanner Functions
-    async function startBarcodeScanner() {
-        if (scannerActive) return;
-        
-        try {
-            // Request camera access
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: facingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            });
-            
-            currentStream = stream;
-            scannerActive = true;
-            
-            // Display camera stream
-            barcodeScanner.innerHTML = '';
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            video.setAttribute('autoplay', '');
-            video.setAttribute('playsinline', '');
-            video.style.width = '100%';
-            video.style.height = '100%';
-            video.style.objectFit = 'cover';
-            
-            barcodeScanner.appendChild(video);
-            
-            // Add scanner overlay
-            const overlay = document.createElement('div');
-            overlay.className = 'scanner-overlay';
-            overlay.innerHTML = `
-                <div class="scanner-frame"></div>
-                <p style="margin-top: 10px; color: white;">Point camera at barcode</p>
-            `;
-            barcodeScanner.appendChild(overlay);
-            
-            // Update UI
-            startScannerBtn.disabled = true;
-            stopScannerBtn.disabled = false;
-            switchCameraBtn.disabled = false;
-            
-            // Initialize QuaggaJS for barcode scanning
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: video,
-                    constraints: {
-                        facingMode: facingMode
-                    }
-                },
-                decoder: {
-                    readers: [
-                        "code_128_reader",
-                        "ean_reader",
-                        "ean_8_reader",
-                        "code_39_reader",
-                        "upc_reader",
-                        "upc_e_reader"
-                    ]
-                },
-                locate: true
-            }, function(err) {
-                if (err) {
-                    console.error(err);
-                    showNotification('Failed to initialize barcode scanner', 'error');
-                    return;
-                }
-                
-                Quagga.start();
-                
-                // Listen for barcode detection
-                Quagga.onDetected(function(result) {
-                    const code = result.codeResult.code;
-                    handleBarcodeScanned(code);
-                });
-            });
-            
-            showNotification('Barcode scanner started successfully');
-            
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            showNotification('Cannot access camera. Please check permissions.', 'error');
-        }
-    }
-    
-    function stopBarcodeScanner() {
-        if (!scannerActive) return;
-        
-        // Stop Quagga
-        if (Quagga) {
-            Quagga.stop();
-        }
-        
-        // Stop camera stream
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-        }
-        
-        scannerActive = false;
-        
-        // Reset UI
-        barcodeScanner.innerHTML = `
-            <div class="scanner-overlay">
-                <i class="fas fa-camera" style="font-size: 3rem; margin-bottom: 15px;"></i>
-                <p>Click "Start Scanner" to begin scanning</p>
-                <div class="scanner-frame"></div>
-            </div>
-        `;
-        
-        startScannerBtn.disabled = false;
-        stopScannerBtn.disabled = true;
-        switchCameraBtn.disabled = true;
-        
-        showNotification('Barcode scanner stopped');
-    }
-    
-    function switchCamera() {
-        facingMode = facingMode === 'environment' ? 'user' : 'environment';
-        stopBarcodeScanner();
-        setTimeout(startBarcodeScanner, 500);
-    }
-    
-    function handleBarcodeScanned(barcode) {
-        console.log('Barcode scanned:', barcode);
-        
-        // Find product with this barcode
-        const product = products.find(p => p.barcode === barcode);
-        
-        if (product) {
-            currentScannedProduct = product;
-            
-            // Product found
-            scannerResult.innerHTML = `
-                <p><strong>Barcode Scanned:</strong> ${barcode}</p>
-            `;
-            
-            scannedProductInfo.style.display = 'block';
-            scannedProductInfo.innerHTML = `
-                <h4>Product Found:</h4>
-                <p><strong>Name:</strong> ${product.name}</p>
-                <p><strong>Price:</strong> ${formatCurrency(product.price)}</p>
-                <p><strong>Stock:</strong> ${product.totalUnits} units</p>
-                <div class="quick-sell-options">
-                    <button class="quick-sell-btn" style="background: var(--primary); color: white;" id="sell-one-unit">
-                        <i class="fas fa-cash-register"></i> Sell 1 Unit
-                    </button>
-                    <button class="quick-sell-btn" style="background: var(--success); color: white;" id="sell-custom">
-                        <i class="fas fa-edit"></i> Custom Quantity
-                    </button>
-                    <button class="quick-sell-btn" style="background: var(--warning); color: white;" id="open-details">
-                        <i class="fas fa-info-circle"></i> Product Details
-                    </button>
-                </div>
-            `;
-            
-            // Add event listeners to buttons
-            document.getElementById('sell-one-unit').addEventListener('click', () => {
-                quickSellProductDirect(1);
-            });
-            
-            document.getElementById('sell-custom').addEventListener('click', () => {
-                openQuickSellModal(product);
-            });
-            
-            document.getElementById('open-details').addEventListener('click', () => {
-                openSellModal(product);
-                stopBarcodeScanner();
-            });
-            
-            showNotification(`Product found: ${product.name}`);
-            
-        } else {
-            // Product not found
-            scannerResult.innerHTML = `
-                <p><strong>Barcode Scanned:</strong> ${barcode}</p>
-                <p style="color: var(--danger);">No product found with this barcode</p>
-            `;
-            scannedProductInfo.style.display = 'none';
-            currentScannedProduct = null;
-            
-            showNotification('No product found with this barcode', 'error');
-        }
-    }
-    
-    // Quick sell functions
-    function openQuickSellModal(product) {
-        currentProductForSale = product;
-        
-        const productInfo = document.getElementById('quick-sell-info');
-        const totalUnits = product.totalUnits || 0;
-        
-        productInfo.innerHTML = `
-            <h3>${product.name}</h3>
-            <p>Price: ${formatCurrency(product.price)} per unit</p>
-            <p>Available Stock: ${totalUnits} units</p>
-        `;
-        
-        document.getElementById('quick-sell-quantity').value = 1;
-        document.getElementById('quick-sell-quantity').max = totalUnits;
-        
-        quickSellModal.classList.add('active');
-    }
-    
-    function quickSellProduct() {
-        if (!currentProductForSale) return;
-        
-        const quantity = parseInt(document.getElementById('quick-sell-quantity').value);
-        quickSellProductDirect(quantity);
-    }
-    
-    function quickSellProductDirect(quantity) {
-        if (!currentScannedProduct && !currentProductForSale) return;
-        
-        const product = currentScannedProduct || currentProductForSale;
-        if (!product) return;
-        
-        if (quantity <= 0) {
-            showNotification('Please enter a valid quantity', 'error');
-            return;
-        }
-        
-        const totalUnits = product.totalUnits || 0;
-        
-        if (quantity > totalUnits) {
-            showNotification(`Only ${totalUnits} units available for ${product.name}`, 'error');
-            return;
-        }
-        
-        // Calculate sale details
-        const costPrice = product.costPrice || 0;
-        const sellingPrice = product.price;
-        const total = sellingPrice * quantity;
-        const profit = (sellingPrice - costPrice) * quantity;
-        
-        // Update stock
-        product.totalUnits = totalUnits - quantity;
-        
-        // Create sale record
-        const sale = {
-            id: Date.now(),
-            timestamp: new Date().toLocaleString(),
-            product: {
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                costPrice: costPrice
-            },
-            quantity: quantity,
-            subtotal: total,
-            discount: 0,
-            discountType: 'fixed',
-            total: total,
-            profit: profit
-        };
-        
-        // Add to sales history
-        sales.unshift(sale);
-        saveSales();
-        
-        // Save updated products
-        saveProducts();
-        
-        // Show success message
-        showNotification(`Sold ${quantity} units of ${product.name} for ${formatCurrency(total)}`);
-        
-        // Close modals
-        quickSellModal.classList.remove('active');
-        currentProductForSale = null;
-        
-        // Update displays
-        renderProducts(products);
-        updateInventoryDisplay();
-        updateSalesDisplay();
-        
-        // Reset scanner result after successful sale
-        if (currentScannedProduct) {
-            scannerResult.innerHTML = `
-                <p><strong>Last Sale:</strong> ${quantity} x ${product.name} = ${formatCurrency(total)}</p>
-                <p style="color: var(--success);">Sale completed successfully!</p>
-            `;
-            scannedProductInfo.style.display = 'none';
-            currentScannedProduct = null;
-        }
     }
     
     // Calculate price breakdown with discount
@@ -825,6 +521,26 @@
         localStorage.setItem('posSales', JSON.stringify(sales));
     }
     
+    // Update stats display
+    function updateStats() {
+        totalProductsEl.textContent = products.length;
+        
+        const inStockCount = products.filter(p => {
+            const totalUnits = p.totalUnits || 0;
+            const unitsPerBox = p.unitsPerBox || 1;
+            return totalUnits >= unitsPerBox;
+        }).length;
+        
+        const lowStockCount = products.filter(p => {
+            const totalUnits = p.totalUnits || 0;
+            const unitsPerBox = p.unitsPerBox || 1;
+            return totalUnits > 0 && totalUnits < unitsPerBox;
+        }).length;
+        
+        inStockCountEl.textContent = inStockCount;
+        lowStockCountEl.textContent = lowStockCount;
+    }
+    
     // Render products to the grid
     function renderProducts(productsToRender) {
         productsGrid.innerHTML = '';
@@ -885,7 +601,6 @@
                     </div>
                     <div class="product-price">
                         ${formatCurrency(product.price)}
-                        <span class="barcode">${product.barcode || 'No barcode'}</span>
                     </div>
                     <div class="product-actions">
                         <button class="action-btn stock-btn" data-id="${product.id}">
@@ -1055,6 +770,7 @@
         renderProducts(products);
         updateInventoryDisplay();
         updateSalesDisplay();
+        updateStats();
     }
     
     // Delete product
@@ -1068,6 +784,7 @@
                 // Update displays
                 renderProducts(products);
                 updateInventoryDisplay();
+                updateStats();
                 
                 showNotification('Product deleted successfully', 'error');
             }
@@ -1123,6 +840,7 @@
         // Update displays
         renderProducts(products);
         updateInventoryDisplay();
+        updateStats();
         
         // Show notification with reason if provided
         const action = change > 0 ? 'added to' : 'removed from';
@@ -1452,7 +1170,6 @@
         const category = document.getElementById('product-category').value;
         const costPrice = parseFloat(document.getElementById('cost-price').value);
         const price = parseFloat(document.getElementById('product-price').value);
-        const barcode = document.getElementById('product-barcode').value;
         const unitsPerBox = parseInt(document.getElementById('units-per-box').value);
         const totalUnits = parseInt(document.getElementById('total-units').value);
         const description = document.getElementById('product-description').value;
@@ -1468,7 +1185,6 @@
             category,
             costPrice,
             price,
-            barcode: barcode || generateBarcode(),
             unitsPerBox,
             totalUnits,
             description
@@ -1484,6 +1200,7 @@
         // Update displays
         renderProducts(products);
         updateInventoryDisplay();
+        updateStats();
         
         showNotification(`${name} added successfully`);
     }
